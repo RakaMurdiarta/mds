@@ -1,0 +1,13 @@
+export const ProjectIdentifier = 'Project';
+export type ProjectIdentifier = 'Project';
+
+export const CompaiesIdentifier = 'Company';
+export type CompaiesIdentifier = 'Company';
+
+export const SupplierIdentifier = 'Suplier';
+export type SupplierIdentifier = 'Suplier';
+
+export type TYPE_IDENTIFIER =
+  | ProjectIdentifier
+  | CompaiesIdentifier
+  | SupplierIdentifier;
