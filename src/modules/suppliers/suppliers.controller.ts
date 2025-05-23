@@ -8,7 +8,7 @@ export class SuppliersController {
   constructor(private readonly suppliersServices: SupplierServices) {}
   @ResponseMessage('suppliers pooling triggered')
   @Get()
-  async execPoolCompanies(): Promise<ApiResponse<void>> {
+  async execPoolSuppliers(): Promise<ApiResponse<void>> {
     await this.suppliersServices.poolingSuppliers('Supplier');
 
     return {

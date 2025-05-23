@@ -12,6 +12,7 @@ import { ResponseApiInterceptor } from '@app/commons/api/responseApi.interceptor
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ExOutBoxModule } from '@app/commons/external/exOutBox.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
     CompaniesModule,
     ExOutBoxModule,
     SuppliersModule,
+    CustomersModule,
   ],
   controllers: [],
   providers: [
