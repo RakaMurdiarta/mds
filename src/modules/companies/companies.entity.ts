@@ -1,6 +1,6 @@
-import { Column, Entity, Index, Unique } from 'typeorm';
+import { Column, Entity, Index, OneToMany, Unique } from 'typeorm';
 import { BaseSchemaUUID } from '@app/commons/entities/baseEntitiesHelper';
-// import { ProjectEntity } from '../projects/project.entity';
+import { ProjectEntity } from '../projects/project.entity';
 
 @Entity({ name: CompaniesEntity.tableName })
 @Unique('uq_Companies_company_id', ['companyId'])
@@ -19,6 +19,6 @@ export class CompaniesEntity extends BaseSchemaUUID {
   @Column({ type: 'varchar' })
   name: string;
 
-  //   @OneToMany(() => ProjectEntity, (p) => p.company, { nullable: false })
-  //   projects: Array<ProjectEntity>;
+  @OneToMany(() => ProjectEntity, (p) => p.company, { nullable: false })
+  projects: Array<ProjectEntity>;
 }
