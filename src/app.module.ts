@@ -11,6 +11,7 @@ import { CompaniesModule } from './modules/companies/comanies.module';
 import { ResponseApiInterceptor } from '@app/commons/api/responseApi.interceptor';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ExOutBoxModule } from '@app/commons/external/exOutBox.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ExOutBoxModule } from '@app/commons/external/exOutBox.module';
     CqrsModule,
     CompaniesModule,
     ExOutBoxModule,
+    SuppliersModule,
   ],
   controllers: [],
   providers: [
