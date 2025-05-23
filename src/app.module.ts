@@ -13,6 +13,8 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ExOutBoxModule } from '@app/commons/external/exOutBox.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { BullMQInit } from '@app/commons/queues/providers/bullmq/bullmqInit';
+import { RedisModule } from '../libs/commons/src/infra/redis/redis.mdule';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { CustomersModule } from './modules/customers/customers.module';
     ExOutBoxModule,
     SuppliersModule,
     CustomersModule,
+    RedisModule,
+    BullMQInit,
   ],
   controllers: [],
   providers: [
