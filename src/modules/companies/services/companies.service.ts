@@ -3,13 +3,20 @@ import { CompaniesRepository } from '../repositories/companiesRepository';
 import { EnvService } from '@env/env.service';
 import { fetchApi } from '@app/commons/utils/fetcher';
 import { OuterType } from '@app/commons/utils/externalApi.type';
-import { CreateCompanyDto } from '../schema/createCompany.schema';
+import {
+  CreateCompanyDto,
+  createCompanySchema,
+} from '../schema/createCompany.schema';
 import { TYPE_IDENTIFIER } from '@app/commons/types/typeIdentifier.type';
 import { CreateCompanyCommand } from '../commands/createCompany.command';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
-import { UpdateCompanyDto } from '../schema/updateCompany.schema';
+import {
+  UpdateCompanyDto,
+  updateCompanySchema,
+} from '../schema/updateCompany.schema';
 import { UpdateCompanyCommand } from '../commands/updateCompany.command';
 import { DeleteOutBoxEvent } from '@app/commons/events/deleteOutBoxEvent';
+import { zodParseSchema } from '@app/commons/utils/zodFilterParse';
 
 @Injectable()
 export class CompaniesService {
@@ -20,7 +27,10 @@ export class CompaniesService {
     private readonly eventBus: EventBus,
   ) {}
 
-  private async createCompany(args: CreateCompanyDto): Promise<void> {
+  private async createCompany(
+    args: CreateCompanyDto,
+    id: string,
+  ): Promise<void> {
     try {
       const company = await this.companiesRepo.findBy({
         where: {
@@ -35,12 +45,16 @@ export class CompaniesService {
       const cmd = new CreateCompanyCommand(args.companyId, args.name);
 
       await this.commandBus.execute(cmd);
+      await this.eventBus.publish(new DeleteOutBoxEvent([id]));
       return;
     } catch (error) {
       throw error;
     }
   }
-  private async updateCompany(args: UpdateCompanyDto): Promise<void> {
+  private async updateCompany(
+    args: UpdateCompanyDto,
+    id: string,
+  ): Promise<void> {
     try {
       const company = await this.companiesRepo.findBy({
         where: {
@@ -55,6 +69,7 @@ export class CompaniesService {
       const cmd = new UpdateCompanyCommand(args.companyId, args.name);
 
       await this.commandBus.execute(cmd);
+      await this.eventBus.publish(new DeleteOutBoxEvent([id]));
     } catch (error) {
       throw error;
     }
@@ -81,28 +96,24 @@ export class CompaniesService {
 
       await Promise.all(
         companies.data.map(async (data) => {
-          const { companyId, name } = data.payload;
-
           switch (data.operation) {
             case 'create': {
-              const dto: CreateCompanyDto = {
-                companyId,
-                name,
-              };
+              const parse = zodParseSchema<CreateCompanyDto>(
+                createCompanySchema,
+                data.payload,
+              );
 
-              await this.createCompany(dto);
-              await this.eventBus.publish(new DeleteOutBoxEvent([data.id]));
+              await this.createCompany(parse, data.id);
               break;
             }
 
             case 'update': {
-              const dto: UpdateCompanyDto = {
-                companyId,
-                name,
-              };
+              const parse = zodParseSchema<UpdateCompanyDto>(
+                updateCompanySchema,
+                data.payload,
+              );
 
-              await this.updateCompany(dto);
-              await this.eventBus.publish(new DeleteOutBoxEvent([data.id]));
+              await this.updateCompany(parse, data.id);
               break;
             }
 

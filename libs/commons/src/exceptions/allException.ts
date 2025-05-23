@@ -21,10 +21,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       const __response: ApiResponse<any> = {
         data: null,
-        message:
-          exception.response ??
-          exception.response?.message ??
-          'Internal server error',
+        message: exception.response?.message ?? 'Internal server error',
         metaData: {
           timestamp: new Date().toISOString(),
         },
@@ -40,6 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       metaData: {
         timestamp: new Date().toISOString(),
       },
+      statusCode: HttpStatus.BAD_REQUEST,
     };
 
     return response.json(__response).status(HttpStatus.BAD_REQUEST);
