@@ -56,6 +56,8 @@ export class ProjectDataSyncService {
       await qrTrackConneciton.commit();
       console.log('TRANSACTION COMMIT');
     } catch (error) {
+      console.log(error);
+
       await siaConneciton.rollback();
       await qrTrackConneciton.rollback();
       console.log('TRANSACTION ROLLBACK');

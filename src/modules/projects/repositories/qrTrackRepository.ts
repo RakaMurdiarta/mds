@@ -12,6 +12,10 @@ import {
 } from '../schemas/createQrTrackProject.schema';
 import { UpdateQrTrackProjectDto } from '../schemas/updateQrTrackProject.schema';
 
+export enum Operation {
+  Equal = '=',
+  Not_Equal = '!=',
+}
 @Injectable()
 export class QrTrackRepo extends DBPlainConnection {
   private insertStatment: string = 'INSERT INTO';
@@ -82,11 +86,52 @@ export class QrTrackRepo extends DBPlainConnection {
     }
   }
 
+  async findByIdAndNameWithOperation(payload: {
+    projectId: number;
+    operation: Operation;
+    name: string;
+  }): Promise<{ ProjectID: number } | null> {
+    try {
+      const columns = ['id'].join(',');
+      const sql = `SELECT ${columns} FROM projects WHERE id ${payload.operation} ? AND name = ? AND deleted_at IS NULL`;
+
+      const connection = await this.connectionPool();
+      const row = await connection.execute<SelectResult>(sql, [
+        payload.projectId,
+        payload.name,
+      ]);
+
+      let result: { ProjectID: number } | null = null;
+
+      if (row.length <= 0) {
+        return null;
+      }
+
+      row[0].forEach((e) => {
+        result = e;
+      });
+
+      return result;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async updateProjectById(
     payloads: UpdateQrTrackProjectDto,
     connection: PoolConnection,
   ): Promise<void> {
     try {
+      const project = await this.findByIdAndNameWithOperation({
+        projectId: payloads.id,
+        operation: Operation.Not_Equal,
+        name: payloads.name,
+      });
+
+      if (project) {
+        return;
+      }
+
       const keys: Array<string> = [];
       const values: Array<string> = [];
 

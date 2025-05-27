@@ -11,6 +11,11 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { ProjectControllers } from './project.controllers';
 import { CompaniesModule } from '../companies/companies.module';
 import { RedisModule } from '@app/commons/infra/redis/redis.mdule';
+import { CreateProjectHandler } from './commands/createProject.handler';
+import { DBTransactionModule } from '@app/commons/dbTransaction/dbTx.module';
+import { ProjectConsumer } from './queue/consumer/project.consumer';
+import { UpdateProjectHandler } from './commands/updateProject.handler';
+import { ExOutBoxModule } from '@app/commons/external/exOutBox.module';
 
 @Module({
   imports: [
@@ -23,8 +28,18 @@ import { RedisModule } from '@app/commons/infra/redis/redis.mdule';
     CqrsModule,
     CompaniesModule,
     RedisModule,
+    DBTransactionModule,
+    ExOutBoxModule,
   ],
-  providers: [ProjectDataSyncService, ProjectService, ProjectRepository],
+  providers: [
+    ProjectDataSyncService,
+    ProjectService,
+    ProjectRepository,
+    CreateProjectHandler,
+    UpdateProjectHandler,
+    ProjectConsumer,
+  ],
   controllers: [ProjectControllers],
+  exports: [ProjectService],
 })
 export class ProjectsModule {}

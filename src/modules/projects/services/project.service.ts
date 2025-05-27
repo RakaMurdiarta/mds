@@ -1,8 +1,9 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   CREATE_PROJECT_SYNC_JOB_NAME,
   PROJECT_SYNC_QUEUE_NAME,
+  UPDATE_PROJECT_SYNC_JOB_NAME,
 } from '../queue/queue.constants';
 import { Queue } from 'bullmq';
 import { ProjectRepository } from '../repositories/projectRepository';
@@ -15,10 +16,10 @@ import {
 } from '../schemas/createProject.schema';
 import { TYPE_IDENTIFIER } from '@app/commons/types/typeIdentifier.type';
 import { zodParseSchema } from '@app/commons/utils/zodFilterParse';
-// import {
-//   UpdateProjectDto,
-//   updateProjectSchema,
-// } from '../schemas/updateProject.schema';
+import {
+  UpdateProjectDto,
+  updateProjectSchema,
+} from '../schemas/updateProject.schema';
 import { CompaniesRepository } from '../../companies/repositories/companiesRepository';
 import { CreateProjectCommand } from '../commands/createProject.command';
 import { CommandBus } from '@nestjs/cqrs';
@@ -30,6 +31,7 @@ import { genRandomString } from '@app/commons/utils/genRandom';
 import { MAX_ATTEMPTS } from '../queue/attemps';
 import { RetryConfig } from '@app/commons/queues/config/retryConfig';
 import { JOB_TTL } from '../queue/ttl';
+import { UpdateProjectCommand } from '../commands/updateProject.command';
 
 @Injectable()
 export class ProjectService {
@@ -43,7 +45,7 @@ export class ProjectService {
     @Inject(REDIS_CLIENT) private redis: Redis,
   ) {}
 
-  private async createProject(arg: CreateProjectDto) {
+  private async createProject(arg: CreateProjectDto, outboxId: string) {
     try {
       const company = await this.companyRepo.findBy({
         where: {
@@ -51,47 +53,120 @@ export class ProjectService {
         },
       });
 
-      if (!company) {
-        throw new NotFoundException('company not found');
-      }
-
       const project = await this.projectRepo.findBy({
         where: {
           projectId: arg.projectId,
           name: arg.name,
         },
       });
-      const cmd = new CreateProjectCommand(
-        arg.name,
-        arg.projectType,
-        arg.status,
-        company.id,
-        arg.number,
-        arg.projectId,
-      );
 
-      if (!project) {
+      if (!project && company) {
+        const cmd = new CreateProjectCommand(
+          arg.name,
+          arg.projectType,
+          arg.status,
+          company.id,
+          arg.number,
+          arg.projectId,
+        );
         await this.commandBus.execute(cmd);
       }
 
-      const uuid = uuid_v7();
-      const rnd = genRandomString();
-      const __uuid = `${uuid}${JobDelimeter}${rnd}`;
+      if (company) {
+        const uuid = uuid_v7();
+        const rnd = genRandomString();
+        const __uuid = `${uuid}${JobDelimeter}${rnd}`;
 
-      await this.queue.add(`${CREATE_PROJECT_SYNC_JOB_NAME}`, cmd, {
-        jobId: __uuid,
-        attempts: MAX_ATTEMPTS,
-        backoff: RetryConfig,
-        removeOnComplete: true,
-        removeOnFail: {
-          age: JOB_TTL,
-        },
-      });
+        //setex redis
+        await this.redis.setex(__uuid, JOB_TTL, outboxId);
+
+        const cmd = new CreateProjectCommand(
+          arg.name,
+          arg.projectType,
+          arg.status,
+          company.id,
+          arg.number,
+          arg.projectId,
+        );
+
+        await this.queue.add(
+          `${CREATE_PROJECT_SYNC_JOB_NAME}`,
+          { ...cmd, companyId: company.companyId },
+          {
+            jobId: __uuid,
+            attempts: MAX_ATTEMPTS,
+            backoff: RetryConfig,
+            removeOnComplete: true,
+            removeOnFail: {
+              age: JOB_TTL,
+            },
+            delay: 100,
+          },
+        );
+      }
     } catch (error) {
       throw error;
     }
   }
-  //   async updateProject(arg: UpdateProjectDto) {}
+  async updateProject(arg: UpdateProjectDto, outboxId: string) {
+    try {
+      const project = await this.projectRepo.findBy({
+        where: {
+          projectId: arg.projectId,
+        },
+      });
+
+      const company = await this.companyRepo.findBy({
+        where: {
+          companyId: arg.companyId,
+        },
+      });
+
+      if (project && company) {
+        const cmd = new UpdateProjectCommand(
+          arg.projectId,
+          arg.name,
+          arg.projectType,
+          arg.status,
+          company.id,
+          arg.number,
+        );
+        await this.commandBus.execute(cmd);
+      }
+
+      if (company) {
+        const uuid = uuid_v7();
+        const rnd = genRandomString();
+        const __uuid = `${uuid}${JobDelimeter}${rnd}`;
+        await this.redis.setex(__uuid, JOB_TTL, outboxId);
+        const cmd = new UpdateProjectCommand(
+          arg.projectId,
+          arg.name,
+          arg.projectType,
+          arg.status,
+          company.id,
+          arg.number,
+        );
+
+        await this.queue.add(
+          `${UPDATE_PROJECT_SYNC_JOB_NAME}`,
+          { ...cmd, companyId: company.companyId },
+          {
+            jobId: __uuid,
+            attempts: MAX_ATTEMPTS,
+            backoff: RetryConfig,
+            removeOnComplete: true,
+            removeOnFail: {
+              age: JOB_TTL,
+            },
+            delay: 100,
+          },
+        );
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
 
   async projectPooling(args: { type: TYPE_IDENTIFIER }) {
     try {
@@ -121,17 +196,17 @@ export class ProjectService {
                 data.payload,
               );
 
-              await this.createProject(parse);
+              await this.createProject(parse, data.id);
               break;
             }
 
             case 'update': {
-              //   const parse = zodParseSchema<UpdateProjectDto>(
-              //     updateProjectSchema,
-              //     data.payload,
-              //   );
+              const parse = zodParseSchema<UpdateProjectDto>(
+                updateProjectSchema,
+                data.payload,
+              );
 
-              //   await this.updateProject(parse);
+              await this.updateProject(parse, data.id);
               break;
             }
 

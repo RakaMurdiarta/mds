@@ -13,6 +13,10 @@ import {
 import { UpdateSiaProjectDto } from '../schemas/updateSiaProject.schema';
 
 type SelectResult = QueryResult & Array<{ ProjectID: number }>;
+export enum Operation {
+  Equal = '=',
+  Not_Equal = '!=',
+}
 
 @Injectable()
 export class SiaRepo extends DBPlainConnection {
@@ -89,11 +93,51 @@ export class SiaRepo extends DBPlainConnection {
       return null;
     }
   }
+  async findByIdAndNameWithOperation(payload: {
+    projectId: number;
+    operation: Operation;
+    name: string;
+  }): Promise<{ ProjectID: number } | null> {
+    try {
+      const columns = ['ProjectID'].join(',');
+      const sql = `SELECT ${columns} FROM projects WHERE ProjectID ${payload.operation} ? AND Name = ? AND deleted_at IS NULL`;
+
+      const connection = await this.connectionPool();
+      const row = await connection.execute<SelectResult>(sql, [
+        payload.projectId,
+        payload.name,
+      ]);
+
+      let result: { ProjectID: number } | null = null;
+
+      if (row.length <= 0) {
+        return null;
+      }
+
+      row[0].forEach((e) => {
+        result = e;
+      });
+
+      return result;
+    } catch (error) {
+      return null;
+    }
+  }
   async updateProject(
     payloads: UpdateSiaProjectDto,
     connection: PoolConnection,
   ): Promise<void> {
     try {
+      const project = await this.findByIdAndNameWithOperation({
+        projectId: payloads.ProjectID,
+        operation: Operation.Not_Equal,
+        name: payloads.Name,
+      });
+
+      if (project) {
+        return;
+      }
+
       const keys: Array<string> = [];
       const values: Array<string> = [];
 
