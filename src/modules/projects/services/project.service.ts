@@ -8,13 +8,11 @@ import {
 import { Queue } from 'bullmq';
 import { ProjectRepository } from '../repositories/projectRepository';
 import { EnvService } from '@app/commons/envs/env.service';
-import { fetchApi } from '@app/commons/utils/fetcher';
 import { OuterType } from '@app/commons/utils/externalApi.type';
 import {
   CreateProjectDto,
   createProjectSchema,
 } from '../schemas/createProject.schema';
-import { TYPE_IDENTIFIER } from '@app/commons/types/typeIdentifier.type';
 import { zodParseSchema } from '@app/commons/utils/zodFilterParse';
 import {
   UpdateProjectDto,
@@ -100,7 +98,6 @@ export class ProjectService {
             removeOnFail: {
               age: JOB_TTL,
             },
-            delay: 100,
           },
         );
       }
@@ -108,7 +105,7 @@ export class ProjectService {
       throw error;
     }
   }
-  async updateProject(arg: UpdateProjectDto, outboxId: string) {
+  private async updateProject(arg: UpdateProjectDto, outboxId: string) {
     try {
       const project = await this.projectRepo.findBy({
         where: {
@@ -159,7 +156,6 @@ export class ProjectService {
             removeOnFail: {
               age: JOB_TTL,
             },
-            delay: 100,
           },
         );
       }
@@ -168,53 +164,32 @@ export class ProjectService {
     }
   }
 
-  async projectPooling(args: { type: TYPE_IDENTIFIER }) {
+  async projectPooling(data: OuterType<unknown>) {
     try {
-      const projects = await fetchApi<{
-        data: Array<OuterType<CreateProjectDto>>;
-      }>({
-        url: `${this.envService.get('IPMS_BASE_URL')}/api/integration-outbox?limit=${20}&target=${args.type.toLowerCase()}`,
-        method: 'GET',
-        config: {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.envService.get('IPMS_KEY')}`,
-          },
-        },
-      });
+      switch (data.operation) {
+        case 'create': {
+          const parse = zodParseSchema<CreateProjectDto>(
+            createProjectSchema,
+            data.payload,
+          );
 
-      if (projects.data.length === 0) {
-        return;
+          await this.createProject(parse, data.id);
+          break;
+        }
+
+        case 'update': {
+          const parse = zodParseSchema<UpdateProjectDto>(
+            updateProjectSchema,
+            data.payload,
+          );
+
+          await this.updateProject(parse, data.id);
+          break;
+        }
+
+        default:
+          break;
       }
-
-      await Promise.all(
-        projects.data.map(async (data) => {
-          switch (data.operation) {
-            case 'create': {
-              const parse = zodParseSchema<CreateProjectDto>(
-                createProjectSchema,
-                data.payload,
-              );
-
-              await this.createProject(parse, data.id);
-              break;
-            }
-
-            case 'update': {
-              const parse = zodParseSchema<UpdateProjectDto>(
-                updateProjectSchema,
-                data.payload,
-              );
-
-              await this.updateProject(parse, data.id);
-              break;
-            }
-
-            default:
-              break;
-          }
-        }),
-      );
     } catch (error) {
       throw error;
     }

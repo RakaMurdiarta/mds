@@ -17,7 +17,7 @@ import { SuppliersController } from './suppliers.controller';
     UpdateSupplierHandler,
     CreateSupplierHandler,
   ],
-  exports: [],
+  exports: [SupplierServices],
   controllers: [SuppliersController],
 })
 export class SuppliersModule {}

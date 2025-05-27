@@ -9,7 +9,7 @@ export class CustomersController {
   @ResponseMessage('customer pooling triggered')
   @Get()
   async execPoolCustomers(): Promise<ApiResponse<void>> {
-    await this.customerServices.poolingCustomers('Customer');
+    // await this.customerServices.poolingCustomers('Customer');
 
     return {
       data: null,

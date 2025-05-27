@@ -16,6 +16,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { BullMQInit } from '@app/commons/queues/providers/bullmq/bullmqInit';
 import { RedisModule } from '../libs/commons/src/infra/redis/redis.mdule';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { PoolingModule } from './modules/pooling/pooling.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
     RedisModule,
     BullMQInit,
     ProjectsModule,
+    PoolingModule,
   ],
   controllers: [],
   providers: [

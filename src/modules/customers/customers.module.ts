@@ -17,5 +17,6 @@ import { CustomerServices } from './services/customer.service';
     CustomerServices,
   ],
   controllers: [CustomersController],
+  exports: [CustomerServices],
 })
 export class CustomersModule {}

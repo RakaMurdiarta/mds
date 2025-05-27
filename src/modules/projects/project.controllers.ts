@@ -9,7 +9,7 @@ export class ProjectControllers {
   @ResponseMessage('projects pooling triggered')
   @Get()
   async execPoolProjects(): Promise<ApiResponse<void>> {
-    await this.projectService.projectPooling({ type: 'Project' });
+    // await this.projectService.projectPooling({ type: 'Project' });
     return {
       data: null,
     };

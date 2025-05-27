@@ -9,7 +9,7 @@ export class CompaniesController {
   @ResponseMessage('companies pooling triggered')
   @Get()
   async execPoolCompanies(): Promise<ApiResponse<void>> {
-    await this.companiesServices.poolingCompanies('Company');
+    // await this.companiesServices.poolingCompanies('Company');
 
     return {
       data: null,

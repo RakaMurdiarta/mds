@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { EnvService } from '@env/env.service';
-import { fetchApi } from '@app/commons/utils/fetcher';
-import { TYPE_IDENTIFIER } from '@app/commons/types/typeIdentifier.type';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
 import { DeleteOutBoxEvent } from '@app/commons/events/deleteOutBoxEvent';
 import { zodParseSchema } from '@app/commons/utils/zodFilterParse';
@@ -72,55 +70,34 @@ export class CustomerServices {
     }
   }
 
-  async poolingCustomers(args: TYPE_IDENTIFIER) {
+  async poolingCustomers(data: OuterType<unknown>) {
     try {
-      const customers = await fetchApi<{
-        data: Array<OuterType<CreateCustomerDto>>;
-      }>({
-        url: `${this.envService.get('IPMS_BASE_URL')}/api/integration-outbox?limit=${20}&target=${args.toLowerCase()}`,
-        method: 'GET',
-        config: {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.envService.get('IPMS_KEY')}`,
-          },
-        },
-      });
+      switch (data.operation) {
+        case 'create': {
+          console.log(data.payload);
 
-      if (customers.data.length === 0) {
-        return;
+          const parse = zodParseSchema<CreateCustomerDto>(
+            createCustomerSchema,
+            data.payload,
+          );
+
+          await this.createCustomer(parse, data.id);
+          break;
+        }
+
+        case 'update': {
+          const parse = zodParseSchema<UpdateCustomerDto>(
+            updateCustomerSchema,
+            data.payload,
+          );
+
+          await this.updateCustomer(parse, data.id);
+          break;
+        }
+
+        default:
+          break;
       }
-
-      await Promise.all(
-        customers.data.map(async (data) => {
-          switch (data.operation) {
-            case 'create': {
-              console.log(data.payload);
-
-              const parse = zodParseSchema<CreateCustomerDto>(
-                createCustomerSchema,
-                data.payload,
-              );
-
-              await this.createCustomer(parse, data.id);
-              break;
-            }
-
-            case 'update': {
-              const parse = zodParseSchema<UpdateCustomerDto>(
-                updateCustomerSchema,
-                data.payload,
-              );
-
-              await this.updateCustomer(parse, data.id);
-              break;
-            }
-
-            default:
-              break;
-          }
-        }),
-      );
     } catch (error) {
       throw error;
     }

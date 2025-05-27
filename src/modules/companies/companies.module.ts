@@ -18,6 +18,6 @@ import { ExOutBoxModule } from '@app/commons/external/exOutBox.module';
     CreateCompanyHandler,
   ],
   controllers: [CompaniesController],
-  exports: [CompaniesRepository],
+  exports: [CompaniesRepository, CompaniesService],
 })
 export class CompaniesModule {}

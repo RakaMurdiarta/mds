@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { CompaniesRepository } from '../repositories/companiesRepository';
 import { EnvService } from '@env/env.service';
-import { fetchApi } from '@app/commons/utils/fetcher';
 import { OuterType } from '@app/commons/utils/externalApi.type';
 import {
   CreateCompanyDto,
   createCompanySchema,
 } from '../schema/createCompany.schema';
-import { TYPE_IDENTIFIER } from '@app/commons/types/typeIdentifier.type';
 import { CreateCompanyCommand } from '../commands/createCompany.command';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
 import {
@@ -75,53 +73,32 @@ export class CompaniesService {
     }
   }
 
-  async poolingCompanies(args: TYPE_IDENTIFIER) {
+  async poolingCompanies(data: OuterType<unknown>) {
     try {
-      const companies = await fetchApi<{
-        data: Array<OuterType<CreateCompanyDto>>;
-      }>({
-        url: `${this.envService.get('IPMS_BASE_URL')}/api/integration-outbox?limit=${20}&target=${args.toLowerCase()}`,
-        method: 'GET',
-        config: {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.envService.get('IPMS_KEY')}`,
-          },
-        },
-      });
+      switch (data.operation) {
+        case 'create': {
+          const parse = zodParseSchema<CreateCompanyDto>(
+            createCompanySchema,
+            data.payload,
+          );
 
-      if (companies.data.length === 0) {
-        return;
+          await this.createCompany(parse, data.id);
+          break;
+        }
+
+        case 'update': {
+          const parse = zodParseSchema<UpdateCompanyDto>(
+            updateCompanySchema,
+            data.payload,
+          );
+
+          await this.updateCompany(parse, data.id);
+          break;
+        }
+
+        default:
+          break;
       }
-
-      await Promise.all(
-        companies.data.map(async (data) => {
-          switch (data.operation) {
-            case 'create': {
-              const parse = zodParseSchema<CreateCompanyDto>(
-                createCompanySchema,
-                data.payload,
-              );
-
-              await this.createCompany(parse, data.id);
-              break;
-            }
-
-            case 'update': {
-              const parse = zodParseSchema<UpdateCompanyDto>(
-                updateCompanySchema,
-                data.payload,
-              );
-
-              await this.updateCompany(parse, data.id);
-              break;
-            }
-
-            default:
-              break;
-          }
-        }),
-      );
     } catch (error) {
       throw error;
     }

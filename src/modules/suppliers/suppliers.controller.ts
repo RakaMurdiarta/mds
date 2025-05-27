@@ -9,7 +9,7 @@ export class SuppliersController {
   @ResponseMessage('suppliers pooling triggered')
   @Get()
   async execPoolSuppliers(): Promise<ApiResponse<void>> {
-    await this.suppliersServices.poolingSuppliers('Supplier');
+    // await this.suppliersServices.poolingSuppliers('Supplier');
 
     return {
       data: null,
