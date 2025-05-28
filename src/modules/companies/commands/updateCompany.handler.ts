@@ -3,6 +3,7 @@ import { UpdateCompanyCommand } from './updateCompany.command';
 import { Injectable } from '@nestjs/common';
 import { DbTxService } from '@app/commons/dbTransaction/dbTx.service';
 import { CompaniesRepository } from '../repositories/companiesRepository';
+import { Not } from 'typeorm';
 
 @CommandHandler(UpdateCompanyCommand)
 @Injectable()
@@ -15,15 +16,22 @@ export class UpdateCompanyHandler
   ) {}
   async execute(command: UpdateCompanyCommand): Promise<any> {
     try {
+      const isConflict = await this.companiesRepo.findBy({
+        where: {
+          companyId: Not(command.companyId),
+          name: command?.name,
+        },
+      });
+
+      if (isConflict) {
+        return;
+      }
+
       const company = await this.companiesRepo.findBy({
         where: {
           companyId: command.companyId,
         },
       });
-
-      if (!company) {
-        return;
-      }
 
       await this.__tx.withTx(async (manager) => {
         return await this.companiesRepo.updateCompany(

@@ -17,19 +17,28 @@ export class UpdateProjectHandler
 
   async execute(command: UpdateProjectCommand): Promise<any> {
     try {
-      const getProjectById = await this.projectRepo.findBy({
+      const isConflict = await this.projectRepo.findBy({
         where: {
           projectId: Not(command.projectId),
-          name: command.name,
+          name: command?.name,
         },
         relations: {
           company: true,
         },
       });
 
-      if (getProjectById) {
+      if (isConflict) {
         return;
       }
+
+      const getProjectById = await this.projectRepo.findBy({
+        where: {
+          projectId: command.projectId,
+        },
+        relations: {
+          company: true,
+        },
+      });
 
       await this.__tx.withTx(async (manager) => {
         return await this.projectRepo.updateProject(

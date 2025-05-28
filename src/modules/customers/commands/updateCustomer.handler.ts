@@ -4,6 +4,7 @@ import { DbTxService } from '@app/commons/dbTransaction/dbTx.service';
 
 import { UpdateCustomerCommand } from './updateCustomer.command';
 import { CustomerRepository } from '../repositories/customers.repository';
+import { Not } from 'typeorm';
 
 @CommandHandler(UpdateCustomerCommand)
 @Injectable()
@@ -16,15 +17,22 @@ export class UpdateCustomerHandler
   ) {}
   async execute(command: UpdateCustomerCommand): Promise<any> {
     try {
+      const isConflict = await this.customersRepo.findBy({
+        where: {
+          customerId: Not(command.customerId),
+          name: command.name,
+        },
+      });
+
+      if (isConflict) {
+        return;
+      }
+
       const customer = await this.customersRepo.findBy({
         where: {
           customerId: command.customerId,
         },
       });
-
-      if (!customer) {
-        return;
-      }
 
       await this.__tx.withTx(async (manager) => {
         return await this.customersRepo.updateCustomer(
